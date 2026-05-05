@@ -13,7 +13,7 @@ def aggregate_by_tag(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     Cases with no tags are counted under ``"(untagged)"``.
 
     Each summary dict: ``tag``, ``n``, ``pass_rate``, ``accuracy``, ``avg_gold_f1``,
-    ``avg_grounding``.
+    ``avg_grounding``, ``avg_judge_score``, ``judge_accuracy``.
 
     - ``pass_rate``: fraction with ``passed`` True (composite checklist + gold gate).
     - ``accuracy``: fraction with ``gold_pass`` True among rows that have ``gold_f1``
@@ -22,6 +22,9 @@ def aggregate_by_tag(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
       ``None`` if empty.
     - ``avg_grounding``: mean ``grounding_score`` over rows where it is not ``None``
       (cases with ``gold_doc_titles``); ``None`` if none.
+    - ``avg_judge_score``: mean ``judge_score`` (0–1) where present; ``None`` if none.
+    - ``judge_accuracy``: fraction with ``judge_correct`` True among rows where
+      ``judge_correct`` is not ``None``; ``None`` if that subset is empty.
     """
     tag_to_rows: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for row in rows:
@@ -62,6 +65,19 @@ def aggregate_by_tag(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         else:
             avg_gr = None
 
+        with_judge = [r for r in scored if r.get("judge_score") is not None]
+        if with_judge:
+            avg_j = sum(float(r["judge_score"]) for r in with_judge) / len(with_judge)
+        else:
+            avg_j = None
+
+        with_judge_bin = [r for r in scored if r.get("judge_correct") is not None]
+        if with_judge_bin:
+            j_ok = sum(1 for r in with_judge_bin if r.get("judge_correct") is True)
+            judge_acc = j_ok / len(with_judge_bin)
+        else:
+            judge_acc = None
+
         safe_tag = tag.replace("|", "\\|") if "|" in tag else tag
         out.append(
             {
@@ -71,6 +87,8 @@ def aggregate_by_tag(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "accuracy": accuracy,
                 "avg_gold_f1": avg_f1,
                 "avg_grounding": avg_gr,
+                "avg_judge_score": avg_j,
+                "judge_accuracy": judge_acc,
             }
         )
     return out
@@ -82,8 +100,8 @@ def tag_summary_markdown(rows: list[dict[str, Any]]) -> str:
     lines: list[str] = [
         "## Summary by tag",
         "",
-        "| Tag | N | Pass rate | Accuracy† | Avg gold F1‡ | Avg grounding§ |",
-        "|-----|--:|----------:|----------:|-------------:|---------------:|",
+        "| Tag | N | Pass rate | Accuracy† | Avg gold F1‡ | Avg grounding§ | Avg judge¶ | Judge acc‖ |",
+        "|-----|--:|----------:|----------:|-------------:|---------------:|-----------:|-----------:|",
     ]
     if not stats:
         lines.extend(["", "_No scored rows or no tags._"])
@@ -94,7 +112,9 @@ def tag_summary_markdown(rows: list[dict[str, Any]]) -> str:
         acc = "—" if s["accuracy"] is None else f"{100.0 * s['accuracy']:.1f}%"
         f1 = "—" if s["avg_gold_f1"] is None else f"{s['avg_gold_f1']:.3f}"
         gr = "—" if s["avg_grounding"] is None else f"{s['avg_grounding']:.3f}"
-        lines.append(f"| {s['tag']} | {s['n']} | {pr} | {acc} | {f1} | {gr} |")
+        js = "—" if s["avg_judge_score"] is None else f"{s['avg_judge_score']:.3f}"
+        ja = "—" if s["judge_accuracy"] is None else f"{100.0 * s['judge_accuracy']:.1f}%"
+        lines.append(f"| {s['tag']} | {s['n']} | {pr} | {acc} | {f1} | {gr} | {js} | {ja} |")
 
     lines.extend(
         [
@@ -113,6 +133,12 @@ def tag_summary_markdown(rows: list[dict[str, Any]]) -> str:
             "**`gold_doc_titles`** (benchmark article titles). Each per-case score is the fraction of "
             "those titles that appear as substrings in the model answer (lexical overlap, not semantic "
             "entailment). “—” when no cases in the tag carry title lists.",
+            "",
+            "¶ **Avg judge**: mean **LLM-as-judge** score (0–1) from `--with-judge` runs; “—” when no "
+            "judge scores were recorded for cases in this tag.",
+            "",
+            "‖ **Judge acc**: among rows with a boolean **`judge_correct`**, the fraction marked true; "
+            "“—” when the judge did not emit a binary verdict for any case in this tag.",
         ]
     )
     return "\n".join(lines)

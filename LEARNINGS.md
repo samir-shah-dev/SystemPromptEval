@@ -20,6 +20,12 @@ This document is for your **written and video** deliverables. It has two layers:
 
 ---
 
+## Checkpoint — 2026-05-03 (v0.3.0)
+
+**Status:** Optional **LLM-as-judge** via **`judge_score_case`** in **`judge.py`**: one extra Anthropic **Messages** call per non-skipped case when **`run_eval.py --with-judge`** is set (model from **`ANTHROPIC_JUDGE_MODEL`** or agent default). Result rows include **`judge_score`**, **`judge_correct`**, **`judge_reason`**, **`judge_error`**; tag summary adds **Avg judge** and **Judge acc**. We sanity-checked **`results/with-judge.jsonl`**: judge scores skew **high** when answers are semantically right but **composite `passed` is still false** (strict **`must_contain`** digits/Unicode, low **`gold_f1`** on long prose vs short **`gold_answer`**); **`biology`** shows spread (**Avg judge** ~0.65, split verdicts on **`hard_domestic_dog_binomial_contiguous`**). Paused further calibration (tighter judge prompt vs checklist alignment) for later. Snapshot tagged **`v0.3.0`**.
+
+---
+
 ## How this doc is maintained (journal convention)
 
 - New **dated sections** go under **Journal** at the bottom (newest first or oldest first—pick one and stay consistent; we use **newest at top** below).
@@ -29,6 +35,17 @@ This document is for your **written and video** deliverables. It has two layers:
 ---
 
 ## Journal (newest first)
+
+### 2026-05-03 — LLM-as-judge hook (`--with-judge`)
+
+(Narrative of interpreting scores vs heuristics: **A.14**.)
+
+- Added **`src/system_prompt_eval/judge.py`** with **`judge_score_case`**: judge-only system prompt, JSON **`score`** (0–1), **`correct`**, **`reason`**; skips judge when the agent run ended with **`error`**.
+- **`config.default_judge_model()`** → **`ANTHROPIC_JUDGE_MODEL`** override or agent model.
+- **`eval/run_eval.py`**: **`--with-judge`**, **`--judge-model`**; quiet log snippet + mean judge score over evaluated rows.
+- **`eval_summary.py`**: per-tag **Avg judge**, **Judge acc** and footnotes.
+- **`tests/test_judge.py`** mocks **`Anthropic`** client (no live API).
+- Release snapshot: git tag **`v0.3.0`**.
 
 ### 2026-05-04 — Rich system prompt + Wikipedia lead extracts
 
@@ -135,6 +152,14 @@ I wanted the **Markdown tag summary** to show **Accuracy** and **Avg gold F1**, 
 
 **Design tradeoff called out in passing:** **`multi_hop_placeholder`** (“first president of France”) is **ambiguous** (e.g. Louis-Napoléon Bonaparte vs Charles de Gaulle). Picking one **`gold_answer`** makes **token F1** measurable but can penalize reasonable answers—worth mentioning if you discuss gold quality in the video.
 
+### A.14 Pausing after adding LLM-as-judge (sanity check vs tag summary)
+
+I asked for **`judge_score_case`** integrated into eval exports and then wondered whether **high judge scores** meant the judge was “broken.” We reviewed **`results/with-judge.jsonl`** next to **`passed`**, **`gold_pass`**, and **`gold_f1`**.
+
+**Finding:** Many rows where **`passed`** was **false** still got **`judge_score` 1.0** because the **heuristic harness** failed on **format / substring / token overlap**, not because the prose was wrong—e.g. commas in **`299,792,458`** vs required **`299792458`**, Unicode **`C₆H₁₂O₆`** vs ASCII **`C6H12O6`**, verbose answers vs **short `gold_answer`**. The judge prompt emphasizes **substance vs reference gold**, so **tag-level Judge acc near 100%** often reflects **semantic agreement**, not agreement with **`passed`**. Where rubric conflict was sharp (**dog binomial**), the judge produced **low score + `correct: false`**—useful proof the channel isn’t always saturated.
+
+**Stopping point:** No prompt tightening this round; document the interpretation so future you doesn’t confuse **Judge acc** with **Pass rate**.
+
 ---
 
 ## Part B — What the assignment is asking for (technical)
@@ -143,7 +168,7 @@ Three pillars:
 
 1. **Design** — A **system prompt** (when/how to use Wikipedia) and a **tool definition** (the structured `name` / `description` / `input_schema` passed to `messages.create(..., tools=...)`). The tool definition lives in `src/system_prompt_eval/tools.py`; the system prompt in `src/system_prompt_eval/prompts.py` (still the main place to **iterate** for behavior).
 2. **Integration** — Real Wikipedia: `src/system_prompt_eval/wikipedia.py` calls the **MediaWiki** `action=query&list=search` API and returns titles + cleaned snippets.
-3. **Evaluation** — `eval/cases.yaml` (and optional JSONL), `eval_cases.py` for loading, `scoring.py` for checks, `eval/run_eval.py` to run the agent and aggregate **pass / fail**.
+3. **Evaluation** — `eval/cases.yaml` (and optional JSONL), `eval_cases.py` for loading, `scoring.py` for checks, optional **`judge.py`** LLM-as-judge via **`--with-judge`**, `eval/run_eval.py` to run the agent and aggregate **pass / fail** plus judge fields when enabled.
 
 ---
 
@@ -159,7 +184,8 @@ Three pillars:
 | `eval_cases.py` | YAML / JSONL → `EvalCase` |
 | `scoring.py` | `must_contain`, `must_not_contain`, `gold_answer` heuristics, `gold_doc_titles` grounding |
 | `eval_summary.py` | Aggregate by tag → Markdown table (`tag_summary_markdown`) |
-| `eval/run_eval.py` | Batch eval CLI (`--json-out`, `--jsonl-out`, `--quiet`, `--tag-summary-md`, …) |
+| `judge.py` | Optional **`judge_score_case`** (Anthropic judge, `--with-judge`) |
+| `eval/run_eval.py` | Batch eval CLI (`--json-out`, `--jsonl-out`, `--quiet`, `--tag-summary-md`, `--with-judge`, …) |
 | `scripts/ask.py` | Single-question CLI |
 
 ---
@@ -171,6 +197,7 @@ Three pillars:
 - **Substring grading** is strict: formatted numbers can fail “exact digit string” checks.  
 - **Live Wikipedia** vs benchmark snapshots: articles change; gold provenance can drift.  
 - **Scale:** use **`--jsonl-out`** for long runs; **`--quiet`** for terminals; **`--truncate-answer`** only affects file export if set.
+- **LLM judge vs heuristics:** **`--with-judge`** scores **semantic** fit to gold and question; **high judge scores** can coexist with **`passed: false`** when substring / **`gold_f1`** gates are strict—compare columns before drawing conclusions.
 
 ---
 
@@ -191,7 +218,7 @@ Three pillars:
 - `wikipedia.py` — integration.  
 - `agent.py` — orchestration.  
 - `eval/cases.yaml` — cases + difficulty ramp.  
-- `results/*.jsonl` — per-case `passed`, `must_contain_ok`, answers, errors.
+- `results/*.jsonl` — per-case `passed`, `must_contain_ok`, answers, errors; optional **`judge_*`** when **`--with-judge`**.
 
 ---
 
@@ -201,14 +228,15 @@ Implementation: `src/system_prompt_eval/scoring.py` (`evaluate_case`).
 
 ### G.1 High-level name (for your report or video)
 
-This is **automated, rule-based (heuristic) evaluation** of model outputs. It is **not**:
+The **default** automatic grading in **`evaluate_case`** is **rule-based (heuristic)** evaluation. It is **not**:
 
-- **LLM-as-judge** (no second model rates the answer),
 - **Human preference** or rubric studies,
-- **Semantic similarity** (no embeddings; we do not measure cosine similarity of meanings),
+- **Semantic similarity** via embeddings (no cosine similarity of meanings),
 - **Standard BLEU/ROUGE** (we did not use those).
 
-It **is** a mix of:
+**Optional:** **`run_eval.py --with-judge`** adds a separate **LLM-as-judge** pass (**`judge_score_case`**)—a **second Anthropic model call** that emits **`judge_score`** / **`judge_correct`** for diagnostics; it does **not** replace **`passed`** unless you choose to use it that way downstream.
+
+The heuristic layer **is** a mix of:
 
 1. **Constraint satisfaction / checklist scoring** — each `must_contain` string must appear somewhere in the answer (case-insensitive **substring** match); each `must_not_contain` string must **not** appear. Think **binary constraints** glued with AND.
 2. **Lexical overlap vs a reference** — when `gold_answer` is set, we use **normalized text + token overlap**, in the same family as **reading-comprehension benchmarks**:
@@ -226,7 +254,7 @@ For a **non-skipped** case: **`passed`** is true only if **`must_contain_ok` AND
 
 **Pass rate** = (number of constrained cases with `passed == true`) / (number of cases that are not **skipped**). Skipped rows have no `must_contain` / `must_not_contain` / `gold_answer`, so they do not affect that ratio.
 
-**Tag summary** (optional Markdown from `eval_summary.py`): for each tag, **Accuracy** and **Avg gold F1** use only rows where **`gold_f1`** was computed (YAML **`gold_answer`** must load into **`EvalCase`**). **Avg grounding** averages **`grounding_score`** over cases that define **`gold_doc_titles`**.
+**Tag summary** (optional Markdown from `eval_summary.py`): for each tag, **Accuracy** and **Avg gold F1** use only rows where **`gold_f1`** was computed (YAML **`gold_answer`** must load into **`EvalCase`**). **Avg grounding** averages **`grounding_score`** over cases that define **`gold_doc_titles`**. **Avg judge** / **Judge acc** summarize **`--with-judge`** outputs where present (often **not** aligned with **Pass rate** when heuristics are stricter than semantic grading).
 
 ### G.4 Known limitations (honest for the video)
 

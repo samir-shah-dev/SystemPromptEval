@@ -16,7 +16,17 @@ if str(_ROOT / "src") not in sys.path:
 from system_prompt_eval.agent import run_agent  # noqa: E402
 from system_prompt_eval.eval_cases import load_cases  # noqa: E402
 from system_prompt_eval.eval_summary import tag_summary_markdown  # noqa: E402
+from system_prompt_eval.judge import judge_score_case  # noqa: E402
 from system_prompt_eval.scoring import evaluate_case  # noqa: E402
+
+
+def _empty_judge_fields() -> dict[str, object]:
+    return {
+        "judge_score": None,
+        "judge_correct": None,
+        "judge_reason": None,
+        "judge_error": None,
+    }
 
 
 def _maybe_truncate(text: str, limit: int) -> str:
@@ -89,7 +99,17 @@ def main() -> None:
         "--tag-summary-md",
         type=Path,
         default=None,
-        help="Also write tag-grouped Markdown summary (pass rate, gold accuracy, avg F1, avg grounding) to this path",
+        help="Also write tag-grouped Markdown summary (pass rate, gold metrics, grounding; judge columns when --with-judge)",
+    )
+    parser.add_argument(
+        "--with-judge",
+        action="store_true",
+        help="After each non-skipped case, call Anthropic LLM-as-judge (extra API cost)",
+    )
+    parser.add_argument(
+        "--judge-model",
+        default=None,
+        help="Model id for judge (default: ANTHROPIC_JUDGE_MODEL or ANTHROPIC_MODEL)",
     )
     args = parser.parse_args()
 
@@ -131,7 +151,17 @@ def main() -> None:
                 "tags": case.tags,
                 "gold_doc_titles": case.gold_doc_titles,
                 **score,
+                **_empty_judge_fields(),
             }
+            if args.with_judge and not score.get("skipped"):
+                row.update(
+                    judge_score_case(
+                        case,
+                        answer,
+                        error=err,
+                        model=args.judge_model,
+                    )
+                )
             results.append(row)
 
             if jsonl_fp is not None:
@@ -150,7 +180,12 @@ def main() -> None:
             if args.quiet:
                 peek = _maybe_truncate(answer.replace("\n", " "), 100)
                 tail = f"  {peek!r}" if peek else ""
-                print(f"    -> {status}{tail}", flush=True)
+                jbits = ""
+                if args.with_judge and isinstance(row.get("judge_score"), (int, float)):
+                    jbits = f"  judge={row['judge_score']:.2f}"
+                elif args.with_judge and row.get("judge_error"):
+                    jbits = f"  judge_err={str(row['judge_error'])[:40]!r}"
+                print(f"    -> {status}{tail}{jbits}", flush=True)
                 if err:
                     print(_maybe_truncate(err, 1200), flush=True)
             else:
@@ -183,6 +218,12 @@ def main() -> None:
     if scored:
         pct = 100.0 * len(passed) / len(scored)
         print(f"Pass rate (constrained cases): {len(passed)}/{len(scored)} ({pct:.1f}%)")
+
+    if args.with_judge and scored:
+        judged = [r for r in scored if isinstance(r.get("judge_score"), (int, float))]
+        if judged:
+            mj = sum(float(r["judge_score"]) for r in judged) / len(judged)
+            print(f"Mean LLM judge score ({len(judged)}/{len(scored)} cases): {mj:.3f}")
 
     tag_md = tag_summary_markdown([dict(r) for r in results])
     print()

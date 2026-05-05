@@ -16,6 +16,11 @@ def default_claude_model() -> str:
     return os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-4-6")
 
 
+def default_judge_model() -> str:
+    """Model for LLM-as-judge; ``ANTHROPIC_JUDGE_MODEL`` or same default as the agent."""
+    return os.environ.get("ANTHROPIC_JUDGE_MODEL") or default_claude_model()
+
+
 def load_project_env() -> None:
     """
     Load a ``.env`` file at the project root into the process environment.
