@@ -1,0 +1,2 @@
+{"_id": "sample_hotpot_1", "question": "What is the capital of France?", "answer": "Paris", "supporting_facts": [["France", 0]]}
+{"id": "sample_kilt_like", "input": "Who wrote Hamlet?", "output": [{"answer": "William Shakespeare"}], "meta": {"task": "nq"}}
