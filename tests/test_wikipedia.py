@@ -9,11 +9,14 @@ def test_search_wikipedia_empty_query():
 
 def test_search_wikipedia_no_results(monkeypatch: pytest.MonkeyPatch) -> None:
     class FakeResp:
+        def __init__(self, payload: dict) -> None:
+            self._payload = payload
+
         def raise_for_status(self) -> None:
             pass
 
         def json(self) -> dict:
-            return {"query": {"search": []}}
+            return self._payload
 
     class FakeClient:
         def __init__(self, *a: object, **kw: object) -> None:
@@ -25,8 +28,8 @@ def test_search_wikipedia_no_results(monkeypatch: pytest.MonkeyPatch) -> None:
         def __exit__(self, *a: object) -> None:
             pass
 
-        def get(self, url: str, params: dict) -> FakeResp:
-            return FakeResp()
+        def get(self, url: str, params: dict | None = None) -> FakeResp:
+            return FakeResp({"query": {"search": []}})
 
     monkeypatch.setattr("system_prompt_eval.wikipedia.httpx.Client", FakeClient)
     out = search_wikipedia("xyznonexistent12345")
@@ -34,21 +37,36 @@ def test_search_wikipedia_no_results(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_search_wikipedia_parses_hits(monkeypatch: pytest.MonkeyPatch) -> None:
+    search_payload = {
+        "query": {
+            "search": [
+                {
+                    "title": "Paris",
+                    "snippet": "Capital city of <span class=\"searchmatch\">France</span>.",
+                }
+            ]
+        }
+    }
+    extract_payload = {
+        "query": {
+            "pages": {
+                "1": {
+                    "title": "Paris",
+                    "extract": "Paris is the capital and largest city of France.",
+                }
+            }
+        }
+    }
+
     class FakeResp:
+        def __init__(self, payload: dict) -> None:
+            self._payload = payload
+
         def raise_for_status(self) -> None:
             pass
 
         def json(self) -> dict:
-            return {
-                "query": {
-                    "search": [
-                        {
-                            "title": "Paris",
-                            "snippet": "Capital city of <span class=\"searchmatch\">France</span>.",
-                        }
-                    ]
-                }
-            }
+            return self._payload
 
     class FakeClient:
         def __init__(self, *a: object, **kw: object) -> None:
@@ -60,13 +78,19 @@ def test_search_wikipedia_parses_hits(monkeypatch: pytest.MonkeyPatch) -> None:
         def __exit__(self, *a: object) -> None:
             pass
 
-        def get(self, url: str, params: dict) -> FakeResp:
-            return FakeResp()
+        def get(self, url: str, params: dict | None = None) -> FakeResp:
+            p = params or {}
+            if p.get("list") == "search":
+                return FakeResp(search_payload)
+            if p.get("prop") == "extracts":
+                return FakeResp(extract_payload)
+            return FakeResp({})
 
     monkeypatch.setattr("system_prompt_eval.wikipedia.httpx.Client", FakeClient)
     out = search_wikipedia("Paris")
     assert "Paris" in out
     assert "France" in out
+    assert "_Lead_" in out or "capital" in out.lower()
 
 
 @pytest.mark.network

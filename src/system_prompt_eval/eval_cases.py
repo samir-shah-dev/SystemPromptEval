@@ -29,6 +29,10 @@ def _coerce_str_list(value: Any) -> list[str]:
 
 
 def _gold_answer_from_row(row: dict[str, Any]) -> str | None:
+    # Explicit benchmark-style field (our YAML); takes precedence over Hotpot `answer`.
+    ga = row.get("gold_answer")
+    if isinstance(ga, str) and ga.strip():
+        return ga.strip()
     a = row.get("answer")
     if isinstance(a, str) and a.strip():
         return a.strip()
@@ -121,7 +125,8 @@ def load_cases(path: Path) -> list[EvalCase]:
 
     Supported row shapes:
 
-    - **Our YAML / JSONL**: ``id``, ``question``, optional ``tags``, ``must_contain``, ``gold_answer``.
+    - **Our YAML / JSONL**: ``id``, ``question``, optional ``tags``, ``must_contain``,
+      ``gold_answer`` (reference string; distinct from Hotpot's ``answer`` field).
     - **HotpotQA-style**: ``_id``, ``question``, ``answer``, optional ``supporting_facts``.
     - **KILT-style**: ``id``, ``input`` (question), ``output`` (list with ``answer`` strings).
     """

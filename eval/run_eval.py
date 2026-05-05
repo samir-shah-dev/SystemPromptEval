@@ -15,6 +15,7 @@ if str(_ROOT / "src") not in sys.path:
 
 from system_prompt_eval.agent import run_agent  # noqa: E402
 from system_prompt_eval.eval_cases import load_cases  # noqa: E402
+from system_prompt_eval.eval_summary import tag_summary_markdown  # noqa: E402
 from system_prompt_eval.scoring import evaluate_case  # noqa: E402
 
 
@@ -84,6 +85,12 @@ def main() -> None:
         default=0,
         help="Trim answer text in the terminal log (0 = print full answer; use e.g. 500 for short logs)",
     )
+    parser.add_argument(
+        "--tag-summary-md",
+        type=Path,
+        default=None,
+        help="Also write tag-grouped Markdown summary (pass rate, gold accuracy, avg F1, avg grounding) to this path",
+    )
     args = parser.parse_args()
 
     def _export_row(r: dict[str, object]) -> dict[str, object]:
@@ -122,6 +129,7 @@ def main() -> None:
                 "question": case.question,
                 "answer": answer,
                 "tags": case.tags,
+                "gold_doc_titles": case.gold_doc_titles,
                 **score,
             }
             results.append(row)
@@ -175,6 +183,14 @@ def main() -> None:
     if scored:
         pct = 100.0 * len(passed) / len(scored)
         print(f"Pass rate (constrained cases): {len(passed)}/{len(scored)} ({pct:.1f}%)")
+
+    tag_md = tag_summary_markdown([dict(r) for r in results])
+    print()
+    print(tag_md)
+    if args.tag_summary_md:
+        args.tag_summary_md.parent.mkdir(parents=True, exist_ok=True)
+        args.tag_summary_md.write_text(tag_md + "\n", encoding="utf-8")
+        print(f"\nWrote tag summary {args.tag_summary_md}")
 
     if args.json_out:
         args.json_out.parent.mkdir(parents=True, exist_ok=True)

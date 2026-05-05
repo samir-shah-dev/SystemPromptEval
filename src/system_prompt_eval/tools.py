@@ -9,8 +9,10 @@ from typing import Any
 SEARCH_WIKIPEDIA_TOOL: dict[str, Any] = {
     "name": "search_wikipedia",
     "description": (
-        "Search English Wikipedia and return matching article snippets. "
-        "Use for factual questions; prefer reformulating if the first query returns nothing."
+        "Search English Wikipedia (en.wikipedia.org). Returns ranked titles, search snippets, and "
+        "short lead-section extracts for the top hits when available. "
+        "Call with focused keywords or natural-language queries; if results are empty or off-topic, "
+        "reformulate and try again. Use multiple calls for multi-hop questions."
     ),
     "input_schema": {
         "type": "object",

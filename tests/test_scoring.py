@@ -41,3 +41,16 @@ def test_error_fails():
     r = evaluate_case(case, "", error="boom")
     assert r["passed"] is False
     assert "boom" in r["error"]
+    assert r["grounding_score"] is None
+
+
+def test_grounding_score_from_gold_doc_titles():
+    case = EvalCase(
+        id="t5",
+        question="q",
+        must_contain=["France"],
+        gold_doc_titles=["Paris", "London"],
+    )
+    r = evaluate_case(case, "Paris is in France.", error=None)
+    assert r["grounding_score"] == 0.5
+    assert r["titles_hit_frac"] == r["grounding_score"]

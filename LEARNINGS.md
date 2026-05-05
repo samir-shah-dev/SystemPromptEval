@@ -8,9 +8,15 @@ This document is for your **written and video** deliverables. It has two layers:
 
 **Status:** Working end-to-end agent (`run_agent` + `search_wikipedia` via MediaWiki), eval CLI (`run_eval.py`) with YAML/JSONL cases, **rule-based scoring** in `scoring.py`, results export (`--json-out` / `--jsonl-out`), stress cases in `eval/cases.yaml`, and this narrative doc through Part F.
 
-**Not yet the final story:** `SYSTEM_PROMPT` is still thin relative to the assignment’s “rich prompt” bar; you can iterate prompts against the same case file and compare JSONL runs.
+**Superseded by later work (see Journal):** prompt was expanded **2026-05-04**; iterate prompts against the same case file and compare JSONL runs.
 
 **Use this checkpoint** as a cut for your video (“here’s everything that existed when we froze the engineering story”) or as chapter 1 before later journal entries.
+
+---
+
+## Checkpoint — 2026-05-03 (v0.2.0)
+
+**Status:** Eval cases in YAML include **`gold_answer`** and **`gold_doc_titles`** for stress and hard rows; **`eval_cases.py`** loads **`gold_answer`** correctly (it previously only mapped Hotpot-style **`answer`**, so **`gold_f1`** was always unset for YAML runs). **`eval_summary.py`** drives a Markdown **tag summary** (`--tag-summary-md`): pass rate, **Accuracy**, **Avg gold F1**, and **Avg grounding** (title substring overlap in the model answer). **`scoring.py`** exposes **`grounding_score`** from **`gold_doc_titles`**. Repository snapshot tagged **`v0.2.0`**.
 
 ---
 
@@ -23,6 +29,20 @@ This document is for your **written and video** deliverables. It has two layers:
 ---
 
 ## Journal (newest first)
+
+### 2026-05-04 — Rich system prompt + Wikipedia lead extracts
+
+- Replaced the stub **`SYSTEM_PROMPT`** with explicit guidance: when to call **`search_wikipedia`**, query reformulation and **multi-call multi-hop**, how to use snippets vs synthesized answers with light attribution, and honesty when retrieval is empty or weak.
+- Expanded the **`search_wikipedia`** tool **description** in `tools.py` to mention lead extracts and multiple calls.
+- Upgraded **`wikipedia.py`**: after **`list=search`**, fetch **`prop=extracts`** (intro, plain text, truncated) for the top hits so tool output carries **lead paragraphs**, not only snippets— improves grounding for the eval suite.
+
+### 2026-05-03 — Gold-backed metrics, YAML loader fix, tag summary
+
+- **`eval_cases.py`:** **`_gold_answer_from_row`** now honors our YAML field **`gold_answer`** (Hotpot rows still use **`answer`**). Without this, **`gold_f1`** stayed **`null`** for every YAML case, so the tag table showed **—** for **Accuracy** and **Avg gold F1** even when cases defined gold text.
+- **`eval_summary.py`** + **`run_eval.py --tag-summary-md`:** per-tag **pass rate**, **Accuracy** (share of **`gold_pass`** among rows with computed **`gold_f1`**), **Avg gold F1**, and **Avg grounding** (mean **`grounding_score`** from **`gold_doc_titles`** substring hits).
+- **`eval/cases.yaml`:** reference **`gold_answer`** and **`gold_doc_titles`** added across smoke, stress, and hard cases so aggregates are meaningful.
+- **`scoring.py`:** **`grounding_score`** / **`titles_hit_frac`** derived from **`gold_doc_titles`**.
+- Release snapshot: git tag **`v0.2.0`**.
 
 ### 2026-05-03 — Scoring methodology documented; checkpoint formalized
 
@@ -121,8 +141,9 @@ Three pillars:
 | `agent.py` | Tool loop: `tool_use` → execute → `tool_result` → repeat |
 | `config.py` | Load `.env`; default model helper |
 | `eval_cases.py` | YAML / JSONL → `EvalCase` |
-| `scoring.py` | `must_contain`, `must_not_contain`, `gold_answer` heuristics |
-| `eval/run_eval.py` | Batch eval CLI (`--json-out`, `--jsonl-out`, `--quiet`, …) |
+| `scoring.py` | `must_contain`, `must_not_contain`, `gold_answer` heuristics, `gold_doc_titles` grounding |
+| `eval_summary.py` | Aggregate by tag → Markdown table (`tag_summary_markdown`) |
+| `eval/run_eval.py` | Batch eval CLI (`--json-out`, `--jsonl-out`, `--quiet`, `--tag-summary-md`, …) |
 | `scripts/ask.py` | Single-question CLI |
 
 ---
@@ -188,6 +209,8 @@ For a **non-skipped** case: **`passed`** is true only if **`must_contain_ok` AND
 ### G.3 Aggregate “score” you see in the CLI
 
 **Pass rate** = (number of constrained cases with `passed == true`) / (number of cases that are not **skipped**). Skipped rows have no `must_contain` / `must_not_contain` / `gold_answer`, so they do not affect that ratio.
+
+**Tag summary** (optional Markdown from `eval_summary.py`): for each tag, **Accuracy** and **Avg gold F1** use only rows where **`gold_f1`** was computed (YAML **`gold_answer`** must load into **`EvalCase`**). **Avg grounding** averages **`grounding_score`** over cases that define **`gold_doc_titles`**.
 
 ### G.4 Known limitations (honest for the video)
 

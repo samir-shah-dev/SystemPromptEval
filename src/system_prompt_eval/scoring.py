@@ -18,6 +18,20 @@ def normalize_answer(text: str) -> str:
     return text
 
 
+def grounding_score_from_titles(answer: str, titles: list[str]) -> float | None:
+    """
+    Fraction of ``titles`` that appear as case-insensitive substrings of ``answer``.
+
+    Used as a lightweight **retrieval / grounding** proxy vs benchmark provenance titles.
+    ``None`` when ``titles`` is empty.
+    """
+    if not titles:
+        return None
+    a_lower = answer.lower()
+    hits = sum(1 for t in titles if t.strip() and t.lower() in a_lower)
+    return round(hits / len(titles), 4)
+
+
 def token_f1(prediction: str, ground_truth: str) -> float:
     """SQuAD-style token overlap F1 on normalized token sequences."""
     pred_tokens = normalize_answer(prediction).split()
@@ -48,7 +62,7 @@ def evaluate_case(
     - ``must_contain``: each phrase must appear as substring (case-insensitive).
     - ``must_not_contain``: none may appear (case-insensitive).
     - ``gold_answer``: pass if normalized exact match OR token F1 >= ``min_gold_f1``.
-    - ``gold_doc_titles``: diagnostic only (fraction of titles appearing as substrings).
+    - ``gold_doc_titles``: drives ``grounding_score`` / ``titles_hit_frac`` (title overlap in answer).
     """
     a_lower = answer.lower()
     out: dict[str, Any] = {
@@ -61,11 +75,16 @@ def evaluate_case(
         "gold_f1": None,
         "gold_pass": True,
         "titles_hit_frac": None,
+        "grounding_score": None,
     }
 
     if error:
         out["passed"] = False
         return out
+
+    gs = grounding_score_from_titles(answer, case.gold_doc_titles)
+    out["titles_hit_frac"] = gs
+    out["grounding_score"] = gs
 
     has_constraints = bool(
         case.must_contain or case.must_not_contain or case.gold_answer,
@@ -73,9 +92,6 @@ def evaluate_case(
     if not has_constraints:
         out["skipped"] = True
         out["passed"] = None
-        if case.gold_doc_titles:
-            hits = sum(1 for t in case.gold_doc_titles if t.lower() in a_lower)
-            out["titles_hit_frac"] = round(hits / len(case.gold_doc_titles), 4)
         return out
 
     if case.must_contain:
@@ -96,10 +112,6 @@ def evaluate_case(
     else:
         out["gold_f1"] = None
         out["gold_pass"] = True
-
-    if case.gold_doc_titles:
-        hits = sum(1 for t in case.gold_doc_titles if t.lower() in a_lower)
-        out["titles_hit_frac"] = round(hits / len(case.gold_doc_titles), 4)
 
     out["passed"] = (
         out["must_contain_ok"] and out["must_not_contain_ok"] and out["gold_pass"]

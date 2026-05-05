@@ -14,6 +14,7 @@ def test_load_yaml_cases():
     fr = next(c for c in cases if c.id == "smoke_capital_france")
     assert "France" in fr.question
     assert "Paris" in fr.must_contain
+    assert fr.gold_answer == "Paris"
 
 
 def test_load_jsonl_hotpot_and_kilt_shapes():

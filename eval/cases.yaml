@@ -4,12 +4,20 @@
 - id: smoke_capital_france
   question: "What is the capital of France?"
   tags: [factual, geography]
+  gold_answer: Paris
+  gold_doc_titles:
+    - Paris
+    - France
   must_contain:
     - Paris
 
 - id: multi_hop_placeholder
   question: "Who was the first president of the country where the Eiffel Tower is located?"
   tags: [multi_hop]
+  gold_answer: Louis-Napoléon Bonaparte
+  gold_doc_titles:
+    - France
+    - President of France
   must_contain:
     - France
 
@@ -18,24 +26,40 @@
 - id: stress_disambiguation_mercury_element
   question: "What is the chemical symbol for the metallic element called mercury (not the planet Mercury)?"
   tags: [disambiguation, science]
+  gold_answer: Hg
+  gold_doc_titles:
+    - Mercury (element)
+    - Chemical element
   must_contain:
     - Hg
 
 - id: stress_multi_hop_un_headquarters_city
   question: "In which major U.S. city is the main headquarters of the United Nations located?"
   tags: [multi_hop, geography, entity]
+  gold_answer: New York City
+  gold_doc_titles:
+    - Headquarters of the United Nations
+    - New York City
   must_contain:
     - New York
 
 - id: stress_physics_sound_air_vs_water
   question: "At ordinary temperatures, does sound travel faster in air or in liquid freshwater?"
   tags: [comparison, physics]
+  gold_answer: Sound travels faster in liquid freshwater than in air.
+  gold_doc_titles:
+    - Speed of sound
+    - Water
   must_contain:
     - water
 
 - id: stress_solar_system_endpoints
   question: "In the eight-planet Solar System model, name the planet closest to the Sun and the planet farthest from the Sun."
   tags: [multi_fact, science, list]
+  gold_answer: Mercury and Neptune
+  gold_doc_titles:
+    - Mercury (planet)
+    - Neptune
   must_contain:
     - Mercury
     - Neptune
@@ -43,36 +67,60 @@
 - id: stress_apollo_11_moon_year
   question: "In what calendar year did Apollo 11 first land humans on the Moon?"
   tags: [date, history]
+  gold_answer: "1969"
+  gold_doc_titles:
+    - Apollo 11
+    - Moon landing
   must_contain:
     - "1969"
 
 - id: stress_amazon_longest_south_america
   question: "Which river is generally regarded as the largest by discharge volume in South America?"
   tags: [geography, superlative]
+  gold_answer: Amazon River
+  gold_doc_titles:
+    - Amazon River
+    - South America
   must_contain:
     - Amazon
 
 - id: stress_myth_great_wall_visible_from_moon
   question: "True or false: The Great Wall of China is visible to the naked eye from the Moon."
   tags: [misconception, boolean]
+  gold_answer: "False"
+  gold_doc_titles:
+    - Great Wall of China
+    - Moon
   must_contain:
     - "False"
 
 - id: stress_photosynthesis_gas
   question: "Which gas do green plants primarily take in from the atmosphere for photosynthesis?"
   tags: [biology, chemistry]
+  gold_answer: carbon dioxide
+  gold_doc_titles:
+    - Photosynthesis
+    - Carbon dioxide
   must_contain:
     - carbon dioxide
 
 - id: stress_capital_not_largest_city
   question: "What is the capital of Australia (not its largest city by population)?"
   tags: [disambiguation, geography]
+  gold_answer: Canberra
+  gold_doc_titles:
+    - Canberra
+    - Australia
   must_contain:
     - Canberra
 
 - id: stress_first_un_secretary_general
   question: "Who was the first Secretary-General of the United Nations?"
   tags: [history, entity]
+  gold_answer: Trygve Lie
+  gold_doc_titles:
+    - Trygve Lie
+    - Secretary-General of the United Nations
   must_contain:
     - Trygve
 
@@ -81,18 +129,29 @@
 - id: hard_speed_of_light_exact_si_integer
   question: "In SI, what is the exact integer value of the speed of light in vacuum in meters per second (the 2019-defining constant, not a rounded approximation)?"
   tags: [precision, physics]
+  gold_answer: "299792458"
+  gold_doc_titles:
+    - Speed of light
+    - International System of Units
   must_contain:
     - "299792458"
 
 - id: hard_glucose_molecular_formula_exact
   question: "What is the molecular formula of glucose (the common C6 sugar)?"
   tags: [chemistry, notation]
+  gold_answer: C6H12O6
+  gold_doc_titles:
+    - Glucose
   must_contain:
     - C6H12O6
 
 - id: hard_five_classical_architectural_orders
   question: "Name all five classical orders of architecture in the usual Renaissance enumeration (five distinct names)."
   tags: [art_history, exhaustive_list]
+  gold_answer: Doric, Ionic, Corinthian, Tuscan, and Composite
+  gold_doc_titles:
+    - Classical order
+    - Doric order
   must_contain:
     - Doric
     - Ionic
@@ -103,30 +162,50 @@
 - id: hard_maxwell_treatise_year
   question: "In which year was Maxwell’s *Treatise on Electricity and Magnetism* first published (first volume appearance is fine if your source cites a single year)?"
   tags: [history_of_science, date]
+  gold_answer: "1873"
+  gold_doc_titles:
+    - A Treatise on Electricity and Magnetism
+    - James Clerk Maxwell
   must_contain:
     - "1873"
 
 - id: hard_domestic_dog_binomial_contiguous
   question: "Give the binomial name (genus and species as one uninterrupted Latin pair) most commonly used for the domestic dog in modern zoological nomenclature."
   tags: [biology, strict_format]
+  gold_answer: Canis familiaris
+  gold_doc_titles:
+    - Dog
+    - Binomial nomenclature
   must_contain:
     - Canis familiaris
 
 - id: hard_godel_first_incompleteness_paper_year
   question: "In what year was Kurt Gödel’s paper containing his first incompleteness theorems published?"
   tags: [logic, date]
+  gold_answer: "1931"
+  gold_doc_titles:
+    - Kurt Gödel
+    - Gödel's incompleteness theorems
   must_contain:
     - "1931"
 
 - id: hard_treaty_of_versailles_year
   question: "The Treaty of Versailles between Germany and the Allied and Associated Powers was signed in which year?"
   tags: [history, date]
+  gold_answer: "1919"
+  gold_doc_titles:
+    - Treaty of Versailles
+    - World War I
   must_contain:
     - "1919"
 
 - id: hard_haiti_two_official_languages
   question: "What are the two official languages of Haiti (name both)?"
   tags: [geography, multilingual]
+  gold_answer: French and Haitian Creole
+  gold_doc_titles:
+    - Haiti
+    - French language
   must_contain:
     - French
     - Haitian Creole
@@ -134,18 +213,30 @@
 - id: hard_wilson_fourteen_points_year
   question: "In which year did U.S. President Woodrow Wilson publicly articulate his Fourteen Points program?"
   tags: [history, date]
+  gold_answer: "1918"
+  gold_doc_titles:
+    - Fourteen Points
+    - Woodrow Wilson
   must_contain:
     - "1918"
 
 - id: hard_norwegian_language_family_branch
   question: "Norwegian belongs to which named branch of the Indo-European languages (give the standard English label for the branch, not just ‘Germanic’ alone)?"
   tags: [linguistics, precision]
+  gold_answer: North Germanic
+  gold_doc_titles:
+    - Norwegian language
+    - North Germanic languages
   must_contain:
     - North Germanic
 
 - id: hard_main_four_long_term_wwi_causes
   question: "In the common ‘M.A.I.N.’ classroom framework for long-term causes of World War I, what are the four underlying themes represented by M, A, I, and N (give all four English words)?"
   tags: [history, exhaustive_list]
+  gold_answer: militarism, alliances, imperialism, and nationalism
+  gold_doc_titles:
+    - Causes of World War I
+    - World War I
   must_contain:
     - militarism
     - alliances
@@ -156,10 +247,17 @@
   question: "Is the integer 1 considered a prime number under the usual modern definition used in number theory?"
   tags: [math, definition]
   gold_answer: "No"
+  gold_doc_titles:
+    - Prime number
+    - Integer
 
 - id: hard_atlantic_not_largest_ocean
   question: "Which ocean has the largest surface area on Earth?"
   tags: [geography, anti_confusion]
+  gold_answer: Pacific Ocean
+  gold_doc_titles:
+    - Pacific Ocean
+    - Ocean
   must_contain:
     - Pacific
   must_not_contain:
