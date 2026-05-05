@@ -38,6 +38,8 @@ This document is for your **written and video** deliverables. It has two layers:
 
 ### 2026-05-03 — Gold-backed metrics, YAML loader fix, tag summary
 
+(Narrative of steering and debugging: **A.13**.)
+
 - **`eval_cases.py`:** **`_gold_answer_from_row`** now honors our YAML field **`gold_answer`** (Hotpot rows still use **`answer`**). Without this, **`gold_f1`** stayed **`null`** for every YAML case, so the tag table showed **—** for **Accuracy** and **Avg gold F1** even when cases defined gold text.
 - **`eval_summary.py`** + **`run_eval.py --tag-summary-md`:** per-tag **pass rate**, **Accuracy** (share of **`gold_pass`** among rows with computed **`gold_f1`**), **Avg gold F1**, and **Avg grounding** (mean **`grounding_score`** from **`gold_doc_titles`** substring hits).
 - **`eval/cases.yaml`:** reference **`gold_answer`** and **`gold_doc_titles`** added across smoke, stress, and hard cases so aggregates are meaningful.
@@ -118,6 +120,20 @@ I asked for a **learnings document** (this file), then asked to **redo** it to i
 ### A.12 Checkpoint, journal habit, and naming the scoring approach
 
 I asked to **mark a checkpoint** in this doc, keep **journal-style updates** as we go (for a future **video script**), and to explain **how scoring works** and what it is called—leading to **Part G** and the dated **Journal** section above.
+
+### A.13 After the first checkpoint: gold fields, a silent bug, and closing the loop
+
+I wanted the **Markdown tag summary** to show **Accuracy** and **Avg gold F1**, not only **Avg grounding**, so I asked to **extend `eval/cases.yaml`** with **`gold_answer`** and **`gold_doc_titles`** across smoke, stress, and hard cases. We iterated until every row carried reference text and plausible Wikipedia titles for the grounding heuristic.
+
+**Symptom:** After re-running eval, **Avg grounding** looked sensible, but **Accuracy** and **Avg gold F1** stayed **—** for every tag. That mismatch was the clue: grounding reads **`gold_doc_titles`** straight off the loaded row, while the gold-F1 path depends on **`EvalCase.gold_answer`** inside **`evaluate_case`**.
+
+**Debugging together:** I surfaced the confusion (“we got grounding but never got accuracy and avg gold f1”). The assistant **traced the data path**: tag aggregates only include rows where **`gold_f1` is not null**; **`gold_f1`** is only computed when **`case.gold_answer`** is set; **`load_cases`** builds **`gold_answer`** via **`_gold_answer_from_row`**, which originally mapped Hotpot-style **`answer`** (and similar benchmark keys) but **never read our YAML field `gold_answer`**. So every YAML run silently dropped reference answers—constraints and grounding still worked from other fields, which made the bug easy to miss.
+
+**Fix and verification:** One focused change—honor **`gold_answer`** in **`_gold_answer_from_row`** before falling through to **`answer`**—plus a regression assertion that **`smoke_capital_france`** loads **`Paris`**. Re-running **`run_eval`** then fills the tag table columns as intended.
+
+**How we closed the milestone:** I asked to **commit**, **tag another snapshot**, and **refresh LEARNINGS**. That's the habit from earlier checkpoints: ship a small narrative plus a git tag when behavior stabilizes.
+
+**Design tradeoff called out in passing:** **`multi_hop_placeholder`** (“first president of France”) is **ambiguous** (e.g. Louis-Napoléon Bonaparte vs Charles de Gaulle). Picking one **`gold_answer`** makes **token F1** measurable but can penalize reasonable answers—worth mentioning if you discuss gold quality in the video.
 
 ---
 
